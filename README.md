@@ -21,6 +21,7 @@ Vào phần mềm ngrok và chạy lệnh
 ngrok tcp 8080
 ```
 ![Hình ảnh sau khi chạy lệnh](image/using%20ngrok.png)
+
 Thay địa chỉ và port tương ứng trong file client.c
 ```
 #define port = 11582
