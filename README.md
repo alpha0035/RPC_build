@@ -9,8 +9,8 @@ gcc client.c -o bin\client.exe -lws2_32
 
 ## Thực thi
 ```
-.\bin.\sever
+.\bin\sever
 ```
 ```
-.\bin.\client
+.\bin\client
 ```
