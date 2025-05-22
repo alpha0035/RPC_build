@@ -19,6 +19,7 @@ gcc client.c -o bin\client.exe -lws2_32
 - **Bình thường:** `accept()` sẽ chờ mãi cho đến khi có client kết nối.
 
 - **Non-blocking:** `accept()` **không chờ** — nếu không có kết nối, nó trả về lỗi `WSAEWOULDBLOCK`, cho phép ta chủ động đếm thời gian.
+
 Thực hiện:
 ```
 #define timeout 10
