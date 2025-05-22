@@ -29,3 +29,12 @@ Thay địa chỉ và port tương ứng trong file client.c
 ```
 #define host_addr = "0.tcp.ap.ngrok.io"
 ```
+## Tạo giao diện đồ họa (GUI)
+File RPCGui.java tạo một GUI bằng java và liên kết tới client.exe để thực hiện.
+Chạy lệnh biên dịch và thực thi:
+```
+javac RPCGui.java
+```
+```
+java RPCGui
+```
