@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <winsock2.h>
 #include <conio.h>
+#include <time.h>
 
 #define port 8080
+#define timeout 10
 
 struct RPCRequest {
     int function_id;
@@ -49,20 +51,33 @@ int main() {
     // Bind the socket to the sever address and listen for incoming connections
     bind(server_socket, (struct sockaddr *)&server, sizeof(server));
     listen(server_socket, 3);
+    printf("RPC is listening on port %d...\n", port);
     
-    while (1) {
-        if (_kbhit()) {
-            char ch = _getch();
-            if (ch == 'q' || ch == 'Q') {
-                break;
-            }
-        }
-        printf("RPC is listening on port %d...\n", port);
+    u_long mode = 1;
+    /* 
+    ioctlsocket() is used to set the socket to non-blocking mode
+    FIONBIO is the command to set the socket to non-blocking mode
+    The mode variable is set to 1 to enable non-blocking mode
+    */
+    ioctlsocket(server_socket, FIONBIO, &mode);
+    time_t start_time = time(NULL);
 
+    while (1) {
         c = sizeof(struct sockaddr_in);
         client_socket = accept(server_socket, (struct sockaddr *)&client, &c);
         if (client_socket == INVALID_SOCKET) {
-            printf("Refuse connection!.\n");
+            int err = WSAGetLastError();
+            if (err != WSAEWOULDBLOCK) {
+                printf("Connection failed with error: %d\n", err);
+                break;
+            }
+            // If no client is connected, check if timeout
+            if (difftime(time(NULL), start_time) >= timeout) {
+                printf("No client connected for %d seconds. Shutting down...\n", timeout);
+                break;
+            }
+            // if no client is connected, wait for a while and continue
+            Sleep(300);
             continue;
         }
         printf("\nClient connected from %s:%d\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
@@ -74,8 +89,11 @@ int main() {
             continue;
         }
         printf("Request from client: func_id=%d, a=%d, b=%d\n", req.function_id, req.params[0], req.params[1]);
-
+        
+        // Reset timeout
+        start_time = time(NULL);
         res.status_code = 0;
+        
         switch (req.function_id) {
             case 1: // add
                 res.result = sum(req.params[0], req.params[1]);
@@ -95,18 +113,20 @@ int main() {
                 }
                 break;
             default:
-                res.status_code = 2;
-                res.result = 0;
+            res.status_code = 2;
+            res.result = 0;
         }
         send(client_socket, (char *)&res, sizeof(res), 0);
         printf("Result is sent to client: %d (Status code: %d)\n", res.result, res.status_code);
+
         closesocket(client_socket);
         printf("Close connection.\n\n\n");
+        printf("RPC is listening on port %d...\n", port);
     }
-
+    
     // Close the server socket
     closesocket(server_socket);
-    printf("Server socket is closed\n");
+    printf("Server socket is closed.\n");
     // Cleanup Winsock
     WSACleanup();
     return 0;
