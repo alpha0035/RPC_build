@@ -51,15 +51,20 @@ int main(int argc, char *argv[]) {
     server.sin_port = htons(port);
 
     // Kết nối đến server
-    connect(sock, (struct sockaddr *)&server, sizeof(server));
-
+    int check = connect(sock, (struct sockaddr *)&server, sizeof(server));
+    if (check == SOCKET_ERROR) {
+        printf("Error! Can't connect to server.\n");
+        closesocket(sock);
+        WSACleanup();
+        return 1;
+    }
     // Gửi yêu cầu tới server và nhận phản hồi
     send(sock, (char *)&req, sizeof(req), 0);
-    printf("Request is sent to server: func_id=%d, a=%d, b=%d\n", req.function_id, req.params[0], req.params[1]);
+    // printf("Request is sent to server: func_id=%d, a=%d, b=%d\n", req.function_id, req.params[0], req.params[1]);
     recv(sock, (char *)&res, sizeof(res), 0);
 
     if (res.status_code == 0) {
-        printf("Result: %d\n", res.result);
+        printf("%d\n", res.result);
     } else if(res.status_code == 1) {
         printf("Error! Division by zero.\n");
     } else if(res.status_code == 2) {
