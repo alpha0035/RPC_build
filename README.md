@@ -26,4 +26,5 @@ Thay địa chỉ và port tương ứng trong file client.c
 #define port = 11582
 ```
 ```
-#define 
+#define host_addr = "0.tcp.ap.ngrok.io"
+```
