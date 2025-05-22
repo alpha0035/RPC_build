@@ -2,6 +2,8 @@
 #include <winsock2.h>
 #include <conio.h>
 
+#define port 8080
+
 struct RPCRequest {
     int function_id;
     int params[2];
@@ -12,7 +14,18 @@ struct RPCResponse {
     int status_code;
 };
 
-#define port 8080
+int sum(int a, int b) {
+    return a + b;
+}
+int sub(int a, int b) {
+    return a - b;
+}
+int mul(int a, int b) {
+    return a * b;
+}
+int div(int a, int b) {
+    return a / b;
+}
 
 int main() {
     WSADATA wsa;
@@ -37,12 +50,12 @@ int main() {
     bind(server_socket, (struct sockaddr *)&server, sizeof(server));
     listen(server_socket, 3);
     
-    // catch SIGINT signal to allow graceful shutdown
-    // signal(SIGINT, intHandler);
     while (1) {
         if (_kbhit()) {
             char ch = _getch();
-            break;
+            if (ch == 'q' || ch == 'Q') {
+                break;
+            }
         }
         printf("RPC is listening on port %d...\n", port);
 
@@ -65,30 +78,28 @@ int main() {
         res.status_code = 0;
         switch (req.function_id) {
             case 1: // add
-                res.result = req.params[0] + req.params[1];
+                res.result = sum(req.params[0], req.params[1]);
                 break;
             case 2: // sub
-                res.result = req.params[0] - req.params[1];
+                res.result = sub(req.params[0], req.params[1]);
                 break;
             case 3: // mul
-                res.result = req.params[0] * req.params[1];
+                res.result = mul(req.params[0], req.params[1]);
                 break;
             case 4: // div
                 if (req.params[1] == 0) {
                     res.status_code = 1;
                     res.result = 0;
                 } else {
-                    res.result = req.params[0] / req.params[1];
+                    res.result = div(req.params[0], req.params[1]);
                 }
                 break;
             default:
                 res.status_code = 2;
                 res.result = 0;
         }
-
         send(client_socket, (char *)&res, sizeof(res), 0);
         printf("Result is sent to client: %d (Status code: %d)\n", res.result, res.status_code);
-
         closesocket(client_socket);
         printf("Close connection.\n\n\n");
     }
