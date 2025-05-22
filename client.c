@@ -2,8 +2,8 @@
 #include <winsock2.h>
 #include <stdlib.h>
 
-#define port 8080
-#define sever_address "127.0.0.1"
+#define port 10498 // Port ngrok cung cấp
+#define host_addr "0.tcp.ap.ngrok.io" // Địa chỉ ngrok
 
 struct RPCRequest {
     int function_id;
@@ -21,6 +21,7 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in server;
     struct RPCRequest req;
     struct RPCResponse res;
+    struct hostent *host;
 
     if (argc != 4) {
         printf("Caution! Wrong input syntax! <function_id> <a> <b>\n");
@@ -34,6 +35,11 @@ int main(int argc, char *argv[]) {
     req.params[1] = atoi(argv[3]);
 
     WSAStartup(MAKEWORD(2, 2), &wsa);
+    host = gethostbyname(host_addr);
+    if (host == NULL) {
+        printf("Error: Can't resolve domain name\n");
+        return 0;
+    }
 
     /*
     Tạo socket
@@ -43,10 +49,9 @@ int main(int argc, char *argv[]) {
     */
     sock = socket(AF_INET, SOCK_STREAM, 0);
 
-    // cấu hình địa chỉ server
-    // 127.0.0.1 là địa chỉ localhost
+    // Lấy địa chỉ IP từ hostname ngrok
     // htons() chuyển đổi số nguyên từ host byte order sang network byte order
-    server.sin_addr.s_addr = inet_addr(sever_address);
+    memcpy(&server.sin_addr, host->h_addr_list[0], host->h_length); 
     server.sin_family = AF_INET;
     server.sin_port = htons(port);
 
