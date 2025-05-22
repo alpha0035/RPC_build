@@ -14,11 +14,66 @@ struct RPCResponse {
 
 #define port 8080
 
+// Hàm xử lý yêu cầu RPC trong thread riêng biệt
+/*
+param client_socket_ptr: con trỏ đến socket của client
+return: 0 nếu thành công, 1 nếu thất bại
+*/
+DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
+    SOCKET client_socket = *(SOCKET *)client_socket_ptr;
+    free(client_socket_ptr); // giải phóng con trỏ được cấp phát trong main()
+
+    struct RPCRequest req;
+    struct RPCResponse res;
+    int recv_size;
+
+    recv_size = recv(client_socket, (char *)&req, sizeof(req), 0);
+    if (recv_size == SOCKET_ERROR || recv_size == 0) {
+        printf("Receive failed or client disconnected.\n");
+        closesocket(client_socket);
+        return 1;
+    }
+
+    printf("\nPerforming request from client: func_id=%d, a=%d, b=%d\n",
+           req.function_id, req.params[0], req.params[1]);
+
+    res.status_code = 0;
+    switch (req.function_id) {
+        case 1: // add
+            res.result = req.params[0] + req.params[1];
+            break;
+        case 2: // sub
+            res.result = req.params[0] - req.params[1];
+            break;
+        case 3: // mul
+            res.result = req.params[0] * req.params[1];
+            break;
+        case 4: // div
+            if (req.params[1] == 0) {
+                res.status_code = 1;
+                res.result = 0;
+            } else {
+                res.result = req.params[0] / req.params[1];
+            }
+            break;
+        default:
+            res.status_code = 2;
+            res.result = 0;
+    }
+    Sleep(3000); // Giả lập thời gian xử lý yêu cầu
+    send(client_socket, (char *)&res, sizeof(res), 0);
+    printf("Result sent: %d (Status code: %d)\n", res.result, res.status_code);
+
+    closesocket(client_socket);
+    // printf("Closed client connection.\n\n");
+    return 0;
+}
+
 int main() {
     WSADATA wsa;
     SOCKET server_socket, client_socket;
     struct sockaddr_in server, client;
-    int c, recv_size;
+    int c;
     struct RPCRequest req;
     struct RPCResponse res;
 
@@ -44,7 +99,7 @@ int main() {
             char ch = _getch();
             break;
         }
-        printf("RPC is listening on port %d...\n", port);
+        printf("\nRPC is listening on port %d...\n", port);
 
         c = sizeof(struct sockaddr_in);
         client_socket = accept(server_socket, (struct sockaddr *)&client, &c);
@@ -52,45 +107,12 @@ int main() {
             printf("Refuse connection!.\n");
             continue;
         }
-        printf("Client connected from %s:%d\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
+        printf("\nClient connected from %s:%d\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
 
-        recv_size = recv(client_socket, (char *)&req, sizeof(req), 0);
-        if (recv_size == SOCKET_ERROR) {
-            printf("Receive failed!\n");
-            closesocket(client_socket);
-            continue;
-        }
-        printf("Request from client: func_id=%d, a=%d, b=%d\n", req.function_id, req.params[0], req.params[1]);
-
-        res.status_code = 0;
-        switch (req.function_id) {
-            case 1: // add
-                res.result = req.params[0] + req.params[1];
-                break;
-            case 2: // sub
-                res.result = req.params[0] - req.params[1];
-                break;
-            case 3: // mul
-                res.result = req.params[0] * req.params[1];
-                break;
-            case 4: // div
-                if (req.params[1] == 0) {
-                    res.status_code = 1;
-                    res.result = 0;
-                } else {
-                    res.result = req.params[0] / req.params[1];
-                }
-                break;
-            default:
-                res.status_code = 2;
-                res.result = 0;
-        }
-
-        send(client_socket, (char *)&res, sizeof(res), 0);
-        printf("Result is sent to client: %d (Status code: %d)\n", res.result, res.status_code);
-
-        closesocket(client_socket);
-        printf("Close connection.\n\n\n");
+        // Create a new thread to handle the client request
+        SOCKET *new_sock = malloc(sizeof(SOCKET));
+        *new_sock = client_socket;
+        CreateThread(NULL, 0, handle_client, (void *)new_sock, 0, NULL);
     }
 
     // Close the server socket
