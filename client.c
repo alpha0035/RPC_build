@@ -60,7 +60,9 @@ int main(int argc, char *argv[]) {
 
     if (res.status_code == 0) {
         printf("Result: %d\n", res.result);
-    } else {
+    } else if(res.status_code == 1) {
+        printf("Error! Division by zero.\n");
+    } else if(res.status_code == 2) {
         printf("Error! Bad connection.\n");
     }
 
