@@ -33,7 +33,9 @@ public class RPCGui {
         frame.add(panel);
         frame.setVisible(true);
 
+        // Action listener for the button "Execute"
         calcButton.addActionListener(e -> {
+            // ---------------------------------
             String num1 = num1Field.getText().trim();
             String num2 = num2Field.getText().trim();
             String op = (String) opBox.getSelectedItem();
@@ -46,26 +48,31 @@ public class RPCGui {
             } else if (op.equals("/")) {
                 op = "4";
             }
-
             if (!num1.matches("\\d+") || !num2.matches("\\d+")) {
                 resultLabel.setText("Please enter valid numbers.");
                 return;
             }
-
             try {
+                // Gọi tới lệnh thực thi cho client.exe với các tham số tương ứng
                 ProcessBuilder pb = new ProcessBuilder(".\\bin\\client.exe", op, num1, num2);
                 pb.redirectErrorStream(true);
                 Process process = pb.start();
 
+                // Đọc kết quả trả về từ client.exe
                 BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 String output = reader.readLine();
-
                 resultLabel.setText("Result: " + output);
                 process.waitFor();
             } catch (Exception ex) {
                 ex.printStackTrace();
                 resultLabel.setText("Error!");
             }
+            // ---------------------------------
+
+            /***
+             Thêm Action listener cho nút "Execute" tại đây
+            ***/
+
         });
     }
 }
