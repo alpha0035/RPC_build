@@ -4,7 +4,7 @@
 #include <time.h>
 
 #define port 8080
-#define timeout 30
+#define timeout 10
 
 struct RPCRequest {
     int function_id;
@@ -29,33 +29,6 @@ int div1(int a, int b) {
     return a / b;
 }
 
-void handle_rpc(int function_id, int a, int b, struct RPCResponse *res) {
-    res->status_code = 0;
-    switch (function_id) {
-        case 1: // add
-            res->result = sum(a, b);
-            break;
-        case 2: // sub
-            res->result = sub(a, b);
-            break;
-        case 3: // mul
-            res->result = mul(a, b);
-            break;
-        case 4: // div
-            if (b == 0) {
-                res->status_code = 1;
-                res->result = 0;
-            } else {
-                res->result = div1(a, b);
-            }
-            break;
-        default:
-            res->status_code = 2;
-            res->result = 0;
-            break;
-    }
-}
-
 int main() {
     WSADATA wsa;
     SOCKET server_socket, client_socket;
@@ -77,7 +50,7 @@ int main() {
 
     // Bind the socket to the sever address and listen for incoming connections
     bind(server_socket, (struct sockaddr *)&server, sizeof(server));
-    listen(server_socket, 5);
+    listen(server_socket, 3);
     printf("RPC is listening on port %d...\n", port);
     
     u_long mode = 1;
@@ -100,7 +73,7 @@ int main() {
             }
             // If no client is connected, check if timeout
             if (difftime(time(NULL), start_time) >= timeout) {
-                printf("\nNo client connected for %d seconds. Shutting down...\n", timeout);
+                printf("No client connected for %d seconds. Shutting down...\n", timeout);
                 break;
             }
             // if no client is connected, wait for a while and continue
@@ -119,22 +92,22 @@ int main() {
         
         // Reset timeout
         start_time = time(NULL);
+        res.status_code = 0;
         
-        // Handle the RPC request
-        handle_rpc(req.function_id, req.params[0], req.params[1], &res);
+        handle_rpc(req.function_id, req.params[0], req.params[1], &res.status_code);
         
         send(client_socket, (char *)&res, sizeof(res), 0);
         printf("Result is sent to client: %d (Status code: %d)\n", res.result, res.status_code);
 
         closesocket(client_socket);
-        printf("Close connection.\n\n");
+        printf("Close connection.\n\n\n");
         printf("RPC is listening on port %d...\n", port);
     }
     
     // Close the server socket
     closesocket(server_socket);
+    printf("Server socket is closed.\n");
+    // Cleanup Winsock
     WSACleanup();
-    printf("---Server socket is closed.---\n");
-
     return 0;
 }
