@@ -56,11 +56,40 @@ void handle_rpc(int function_id, int a, int b, struct RPCResponse *res) {
     }
 }
 
+/*
+ Hàm xử lý yêu cầu RPC trong thread riêng biệt
+ param: client_socket_ptr - con trỏ đến socket của client
+ return: 0 nếu thành công, 1 nếu thất bại
+*/
+DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
+    SOCKET client_socket = *(SOCKET *)client_socket_ptr;
+    free(client_socket_ptr); // giải phóng con trỏ được cấp phát trong main()
+
+    struct RPCRequest req;
+    struct RPCResponse res;
+    int recv_size;
+
+    recv_size = recv(client_socket, (char *)&req, sizeof(req), 0);
+    if (recv_size == SOCKET_ERROR || recv_size == 0) {
+        printf("Receive failed or client disconnected.\n");
+        closesocket(client_socket);
+        return 1;
+    }
+
+    handle_rpc(req.function_id, req.params[0], req.params[1], &res);
+    Sleep(5000);
+    send(client_socket, (char *)&res, sizeof(res), 0);
+    printf("\nPerforming request from client: func_id=%d, a=%d, b=%d\nResult sent: %d (Status code: %d)\n",
+           req.function_id, req.params[0], req.params[1], res.result, res.status_code);
+    closesocket(client_socket);
+    return 0;
+}
+
 int main() {
     WSADATA wsa;
     SOCKET server_socket, client_socket;
     struct sockaddr_in server, client;
-    int c, recv_size;
+    int c;
     struct RPCRequest req;
     struct RPCResponse res;
 
@@ -77,7 +106,7 @@ int main() {
 
     // Bind the socket to the sever address and listen for incoming connections
     bind(server_socket, (struct sockaddr *)&server, sizeof(server));
-    listen(server_socket, 5);
+    listen(server_socket, 3);
     printf("RPC is listening on port %d...\n", port);
     
     u_long mode = 1;
@@ -86,17 +115,17 @@ int main() {
     FIONBIO is the command to set the socket to non-blocking mode
     The mode variable is set to 1 to enable non-blocking mode
     */
-    ioctlsocket(server_socket, FIONBIO, &mode);
-    time_t start_time = time(NULL);
-
-    while (1) {
-        c = sizeof(struct sockaddr_in);
-        client_socket = accept(server_socket, (struct sockaddr *)&client, &c);
-        if (client_socket == INVALID_SOCKET) {
-            int err = WSAGetLastError();
-            if (err != WSAEWOULDBLOCK) {
-                printf("Connection failed with error: %d\n", err);
-                break;
+   ioctlsocket(server_socket, FIONBIO, &mode);
+   time_t start_time = time(NULL);
+   
+   while (1) {
+       c = sizeof(struct sockaddr_in);
+       client_socket = accept(server_socket, (struct sockaddr *)&client, &c);
+       if (client_socket == INVALID_SOCKET) {
+           int err = WSAGetLastError();
+           if (err != WSAEWOULDBLOCK) {
+               printf("Connection failed with error: %d\n", err);
+               break;
             }
             // If no client is connected, check if timeout
             if (difftime(time(NULL), start_time) >= timeout) {
@@ -104,37 +133,25 @@ int main() {
                 break;
             }
             // if no client is connected, wait for a while and continue
-            Sleep(300);
+            Sleep(5000);
+            printf("...\n");
             continue;
         }
         printf("\nClient connected from %s:%d\n", inet_ntoa(client.sin_addr), ntohs(client.sin_port));
-
-        recv_size = recv(client_socket, (char *)&req, sizeof(req), 0);
-        if (recv_size == SOCKET_ERROR) {
-            printf("Receive failed!\n");
-            closesocket(client_socket);
-            continue;
-        }
-        printf("Request from client: func_id=%d, a=%d, b=%d\n", req.function_id, req.params[0], req.params[1]);
-        
         // Reset timeout
         start_time = time(NULL);
         
-        // Handle the RPC request
-        handle_rpc(req.function_id, req.params[0], req.params[1], &res);
+        // Create a new thread to handle the client request
+        SOCKET *new_sock = malloc(sizeof(SOCKET));
+        *new_sock = client_socket;
+        CreateThread(NULL, 0, handle_client, (void *)new_sock, 0, NULL);
+        printf("\nRPC is listening on port %d...\n", port);
+        }
         
-        send(client_socket, (char *)&res, sizeof(res), 0);
-        printf("Result is sent to client: %d (Status code: %d)\n", res.result, res.status_code);
-
-        closesocket(client_socket);
-        printf("Close connection.\n\n");
-        printf("RPC is listening on port %d...\n", port);
-    }
-    
-    // Close the server socket
-    closesocket(server_socket);
-    WSACleanup();
-    printf("---Server socket is closed.---\n");
+        // Close the server socket
+        closesocket(server_socket);
+        WSACleanup();
+        printf("---Server socket is closed---\n");
 
     return 0;
 }
