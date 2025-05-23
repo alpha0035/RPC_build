@@ -24,7 +24,15 @@ int main() {
 
     WSAStartup(MAKEWORD(2, 2), &wsa);
 
+    // khởi tạo socket
+    // AF_INET: IPv4
+    // SOCK_STREAM: TCP
+    // 0: default protocol
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_socket < 0) {
+        printf("Could not create socket: %d\n", WSAGetLastError());
+        return 1;
+    }
 
     // Configure server address
     // INADDR_ANY allows the server to accept connections from any IP address
