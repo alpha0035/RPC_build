@@ -11,8 +11,9 @@ gcc client.c -o bin\client.exe -lws2_32
 ```
 .\bin\sever
 ```
+Điền `func_id`, `a`, `b` là các số nguyên
 ```
-.\bin\client
+.\bin\client func_id a b
 ```
 ## Tạo giao diện đồ họa (GUI)
 File RPCGui.java tạo một GUI bằng java và liên kết tới client.exe để thực hiện.
