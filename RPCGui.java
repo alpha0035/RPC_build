@@ -8,11 +8,10 @@ public class RPCGui {
         frame.setSize(400, 250);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLocationRelativeTo(null);
-
         JTextField num1Field = new JTextField(10);
         JTextField num2Field = new JTextField(10);
         JComboBox<String> opBox = new JComboBox<>(new String[]{"+", "-", "*", "/"});
-        JButton calcButton = new JButton("Excute");
+        JButton calcButton = new JButton("Execute");
         JLabel resultLabel = new JLabel("Result: ");
 
         JPanel panel = new JPanel(new GridLayout(5, 2, 10, 10));
@@ -29,9 +28,6 @@ public class RPCGui {
 
         panel.add(calcButton);
         panel.add(resultLabel);
-
-        frame.add(panel);
-        frame.setVisible(true);
 
         calcButton.addActionListener(e -> {
             String num1 = num1Field.getText().trim();

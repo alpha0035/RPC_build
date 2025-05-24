@@ -40,7 +40,7 @@ int main() {
     WSAStartup(MAKEWORD(2, 2), &wsa);
 
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
-
+    
     // Configure server address
     // INADDR_ANY allows the server to accept connections from any IP address
     // htons() converts the port number from host byte order to network byte order
