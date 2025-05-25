@@ -1,78 +1,178 @@
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
+import java.awt.image.BufferedImage;
+
+import javax.imageio.ImageIO;
+
+
+// Load ảnh sprite và hiển thị animation
+class SpriteAnimationPanel extends JPanel {
+    public boolean is_error=false;
+    private final BufferedImage[] frames;
+    private int currentFrame = 0;
+    private final Timer timer;
+    private Runnable onAnimationComplete;
+    /**
+     * Tạo một panel hiển thị animation từ ảnh sprite.
+     *
+     * @param spritePath Đường dẫn đến ảnh sprite.
+     * @param frameWidth Chiều rộng của mỗi frame.
+     * @param frameHeight Chiều cao của mỗi frame.
+     * @param frameCount Số lượng frame trong ảnh sprite.
+     * @param delayMs Thời gian delay giữa các frame (ms).
+     */
+    public SpriteAnimationPanel(String spritePath, int frameWidth, int frameHeight, int frameCount, int delayMs) {
+        setPreferredSize(new Dimension(frameWidth, frameHeight));
+        frames = new BufferedImage[frameCount];
+
+        try {
+            BufferedImage spriteSheet = ImageIO.read(new File(spritePath));
+
+            for (int i = 0; i < frameCount; i++) {
+                frames[i] = spriteSheet.getSubimage(0, i * frameHeight, frameWidth, frameHeight);
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load sprite: " + e.getMessage());
+        }
+
+        timer = new Timer(delayMs, e -> {
+            if (is_error==false) currentFrame = (currentFrame + 1) % (frames.length-1);
+                else currentFrame = (currentFrame + 1) % (frames.length);
+            if (currentFrame==4 && is_error)
+                currentFrame=15;
+            
+            repaint();
+            if (currentFrame == 0) {
+                stopAnimation(); // Dừng animation khi về frame đầu tiên
+                if (onAnimationComplete != null) {
+                    onAnimationComplete.run();
+                }
+            }
+        });
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        if (frames[currentFrame] != null) {
+            g.drawImage(frames[currentFrame], 0, 0, this);
+        }
+    }
+
+    public void startAnimation(Runnable onComplete) {
+        this.onAnimationComplete = onComplete;
+        currentFrame = 0;
+        timer.start();
+    }
+
+    public void stopAnimation() {
+       // animating = false;
+        timer.stop();
+    }
+
+}
 
 public class RPCGui {
     public static void main(String[] args) {
-        JFrame frame = new JFrame("RPC simulating");
-        frame.setSize(400, 250);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLocationRelativeTo(null);
+        SwingUtilities.invokeLater(() -> {
+            JFrame frame = new JFrame("RPC Simulator");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setSize(1000, 550); // mở rộng ngang để đủ chỗ cho ảnh
+            frame.setLocationRelativeTo(null);
+            frame.setLayout(new BorderLayout(10, 10));
 
-        JTextField num1Field = new JTextField(10);
-        JTextField num2Field = new JTextField(10);
-        JComboBox<String> opBox = new JComboBox<>(new String[]{"+", "-", "*", "/"});
-        JButton calcButton = new JButton("Excute");
-        JLabel resultLabel = new JLabel("Result: ");
+            // ==== Form nhập liệu bên trái ====
+            JPanel formPanel = new JPanel(new GridLayout(4, 2, 10, 10));
+            formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        JPanel panel = new JPanel(new GridLayout(5, 2, 10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+            JTextField num1Field = new JTextField();
+            JTextField num2Field = new JTextField();
+            JComboBox<String> opBox = new JComboBox<>(new String[]{"+", "-", "*", "/"});
+            JLabel resultLabel = new JLabel("Result: ");
+            JButton calcButton = new JButton("Execute");
 
-        panel.add(new JLabel("First number:"));
-        panel.add(num1Field);
+            formPanel.add(new JLabel("First number:"));
+            formPanel.add(num1Field);
 
-        panel.add(new JLabel("Second number:"));
-        panel.add(num2Field);
+            formPanel.add(new JLabel("Second number:"));
+            formPanel.add(num2Field);
 
-        panel.add(new JLabel("Operation:"));
-        panel.add(opBox);
+            formPanel.add(new JLabel("Operation:"));
+            formPanel.add(opBox);
 
-        panel.add(calcButton);
-        panel.add(resultLabel);
+            formPanel.add(calcButton);
+            formPanel.add(resultLabel);
 
-        frame.add(panel);
-        frame.setVisible(true);
+            frame.add(formPanel, BorderLayout.CENTER);
 
-        // Action listener for the button "Execute"
-        calcButton.addActionListener(e -> {
-            // ---------------------------------
-            String num1 = num1Field.getText().trim();
-            String num2 = num2Field.getText().trim();
-            String op = (String) opBox.getSelectedItem();
-            if (op.equals("+")) {
-                op = "1";
-            } else if (op.equals("-")) {
-                op = "2";
-            } else if (op.equals("*")) {
-                op = "3";
-            } else if (op.equals("/")) {
-                op = "4";
-            }
-            if (!num1.matches("\\d+") || !num2.matches("\\d+")) {
-                resultLabel.setText("Please enter valid numbers.");
-                return;
-            }
-            try {
-                // Gọi tới lệnh thực thi cho client.exe với các tham số tương ứng
-                ProcessBuilder pb = new ProcessBuilder(".\\bin\\client.exe", op, num1, num2);
-                pb.redirectErrorStream(true);
-                Process process = pb.start();
+            // ==== Ảnh bên phải (EAST) ====
+            SpriteAnimationPanel animationPanel = new SpriteAnimationPanel(
+                "images/sprite_for_rpc.png", 462, 497, 16, 600 // path, width, height, frame count, delay (ms)
+            );
+            frame.add(animationPanel, BorderLayout.EAST);
 
-                // Đọc kết quả trả về từ client.exe
-                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                String output = reader.readLine();
-                resultLabel.setText("Result: " + output);
-                process.waitFor();
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                resultLabel.setText("Error!");
-            }
-            // ---------------------------------
+            // ==== Xử lý nút Execute ====
+            calcButton.addActionListener(e -> {
+                String num1 = num1Field.getText().trim();
+                String num2 = num2Field.getText().trim();
+                String op = (String) opBox.getSelectedItem();
+                
+                String opCode = switch (op) {
+                    case "+" -> "1";
+                    case "-" -> "2";
+                    case "*" -> "3";
+                    case "/" -> "4";
+                    default -> "0";
+                };
+                
+                if (!num1.matches("\\d+") || !num2.matches("\\d+")) {
+                    resultLabel.setText("Result: Please enter valid numbers.");
+                    return;
+                }
+                
+                try {
+                    ProcessBuilder pb = new ProcessBuilder(".\\bin\\client.exe", opCode, num1, num2);
+                    pb.redirectErrorStream(true);
+                    Process process = pb.start();
+                    
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                    String output = reader.readLine();
+                    
+                     process.waitFor();
 
-            /***
-             Thêm Action listener cho nút "Execute" tại đây
-            ***/
+                    if (output.equals("Error! Can't connect to server.")) {
+                        // Thực hiện vẽ frame 14 -> frame 0
+                        animationPanel.is_error=true;
+                        animationPanel.startAnimation(() -> {
+                            SwingUtilities.invokeLater(() -> {
+                                resultLabel.setText("Result: " + output);
+                                animationPanel.is_error=false;
+                            });
+                        });
+                        
+                        return;
+                    }
 
+                    // Bắt đầu animation khi nhấn nút
+                    // chờ animation kết thúc thì mới in ra kết quả
+                        animationPanel.startAnimation(() -> {
+                            SwingUtilities.invokeLater(() -> {
+                                resultLabel.setText("Result: " + output);
+                            });
+                        });
+                    
+                     
+
+               
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    resultLabel.setText("Error!");
+                }
+            });
+
+            frame.setVisible(true);
         });
     }
 }
