@@ -11,7 +11,7 @@ gcc client.c -o bin\client.exe -lws2_32
 ```
 .\bin\sever
 ```
-Điền func_id a b tương ứng là các số nguyên
+Điền `func_id`, `a`, `b` là các số nguyên
 ```
 .\bin\client func_id a b
 ```
