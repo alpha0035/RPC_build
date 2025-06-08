@@ -29,10 +29,38 @@ int div1(int a, int b) {
     return a / b;
 }
 
-// Hàm xử lý yêu cầu RPC trong thread riêng biệt
+// Hàm xử lý yêu cầu client
+void handle_rpc(int function_id, int a, int b, struct RPCResponse *res) {
+    res->status_code = 0;
+    switch (function_id) {
+        case 1: // add
+            res->result = sum(a, b);
+            break;
+        case 2: // sub
+            res->result = sub(a, b);
+            break;
+        case 3: // mul
+            res->result = mul(a, b);
+            break;
+        case 4: // div
+            if (b == 0) {
+                res->status_code = 1;
+                res->result = 0;
+            } else {
+                res->result = div1(a, b);
+            }
+            break;
+        default:
+            res->status_code = 2;
+            res->result = 0;
+            break;
+    }
+}
+
 /*
-param client_socket_ptr: con trỏ đến socket của client
-return: 0 nếu thành công, 1 nếu thất bại
+ Hàm xử lý yêu cầu RPC trong thread riêng biệt
+ param: client_socket_ptr - con trỏ đến socket của client
+ return: 0 nếu thành công, 1 nếu thất bại
 */
 DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
     SOCKET client_socket = *(SOCKET *)client_socket_ptr;
@@ -49,37 +77,11 @@ DWORD WINAPI handle_client(LPVOID client_socket_ptr) {
         return 1;
     }
 
-    printf("\nPerforming request from client: func_id=%d, a=%d, b=%d\n",
-           req.function_id, req.params[0], req.params[1]);
-
-    res.status_code = 0;
-    switch (req.function_id) {
-        case 1: // add
-            res.result = sum(req.params[0], req.params[1]);
-            break;
-        case 2: // sub
-            res.result = sub(req.params[0], req.params[1]);
-            break;
-        case 3: // mul
-            res.result = mul(req.params[0], req.params[1]);
-            break;
-        case 4: // div
-            if (req.params[1] == 0) {
-                res.status_code = 1;
-                res.result = 0;
-            } else {
-                res.result = div1(req.params[0], req.params[1]);
-            }
-            break;
-        default:
-            res.status_code = 2;
-            res.result = 0;
-    }
+    handle_rpc(req.function_id, req.params[0], req.params[1], &res);
     send(client_socket, (char *)&res, sizeof(res), 0);
-    printf("Result sent: %d (Status code: %d)\n", res.result, res.status_code);
-
+    printf("\nPerforming request from client: func_id=%d, a=%d, b=%d\nResult sent: %d (Status code: %d)\n",
+           req.function_id, req.params[0], req.params[1], res.result, res.status_code);
     closesocket(client_socket);
-    // printf("Closed client connection.\n\n");
     return 0;
 }
 
@@ -157,7 +159,7 @@ int main() {
     
     // Close the server socket
     closesocket(server_socket);
-    printf("Server socket is closed.\n");
+    printf("---Server socket is closed.---\n");
     // Cleanup Winsock
     WSACleanup();
     return 0;

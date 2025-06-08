@@ -15,63 +15,79 @@ struct RPCResponse {
     int status_code;
 };
 
-int main(int argc, char *argv[]) {
+int rpc_call(int function_id, int a, int b) {
     WSADATA wsa;
     SOCKET sock;
     struct sockaddr_in server;
     struct RPCRequest req;
     struct RPCResponse res;
 
+    req.function_id = function_id;
+    req.params[0] = a;
+    req.params[1] = b;
+    
+    WSAStartup(MAKEWORD(2, 2), &wsa);
+    /*
+     Tạo socket
+     pram 1: AF_INET - giao thức IPv4
+     pram 2: SOCK_STREAM - giao thức TCP
+     pram 3: 0 - tự động chọn giao thức
+    */
+   sock = socket(AF_INET, SOCK_STREAM, 0);
+   
+    /*
+     Cấu hình địa chỉ server
+     sever_address là địa chỉ IP của server
+     AF_INET là giao thức IPv4
+     htons() chuyển đổi số nguyên từ host byte order sang network byte order
+    */
+    server.sin_addr.s_addr = inet_addr(sever_address);
+    server.sin_family = AF_INET;
+    server.sin_port = htons(port);
+
+    int check = connect(sock, (struct sockaddr *)&server, sizeof(server));
+    if (check == SOCKET_ERROR) {
+        closesocket(sock);
+        WSACleanup();
+        return -9999; // Error code for connection failure
+    }
+
+    send(sock, (char *)&req, sizeof(req), 0);
+    recv(sock, (char *)&res, sizeof(res), 0);
+
+    closesocket(sock);
+    WSACleanup();
+
+    if (res.status_code != 0) {
+        return -9999 - res.status_code;  // error mapping
+    }
+
+    return res.result;
+}
+
+int main(int argc, char *argv[]) {
     if (argc != 4) {
         printf("Caution! Wrong input syntax! <function_id> <a> <b>\n");
         printf("function_id: 1:add, 2:sub, 3:mul, 4:div\n");
         return 1;
     }
+    
+    // Convert command line arguments to integers
+    int function_id = atoi(argv[1]);
+    int a = atoi(argv[2]);
+    int b = atoi(argv[3]);
+    int result = rpc_call(function_id, a, b);
 
-    // Chuyển đổi các tham số đầu vào từ chuỗi sang số nguyên
-    req.function_id = atoi(argv[1]);
-    req.params[0] = atoi(argv[2]);
-    req.params[1] = atoi(argv[3]);
-
-    WSAStartup(MAKEWORD(2, 2), &wsa);
-
-    /*
-    Tạo socket
-    pram 1: AF_INET - giao thức IPv4
-    pram 2: SOCK_STREAM - giao thức TCP
-    pram 3: 0 - tự động chọn giao thức
-    */
-    sock = socket(AF_INET, SOCK_STREAM, 0);
-
-    // cấu hình địa chỉ server
-    // 127.0.0.1 là địa chỉ localhost
-    // htons() chuyển đổi số nguyên từ host byte order sang network byte order
-    server.sin_addr.s_addr = inet_addr(sever_address);
-    server.sin_family = AF_INET;
-    server.sin_port = htons(port);
-
-    // Kết nối đến server
-    int check = connect(sock, (struct sockaddr *)&server, sizeof(server));
-    if (check == SOCKET_ERROR) {
+    // Check for errors, if not, print the result
+    if (result == -9999) {
         printf("Error! Can't connect to server.\n");
-        closesocket(sock);
-        WSACleanup();
-        return 1;
-    }
-    // Gửi yêu cầu tới server và nhận phản hồi
-    send(sock, (char *)&req, sizeof(req), 0);
-    // printf("Request is sent to server: func_id=%d, a=%d, b=%d\n", req.function_id, req.params[0], req.params[1]);
-    recv(sock, (char *)&res, sizeof(res), 0);
-
-    if (res.status_code == 0) {
-        printf("%d\n", res.result);
-    } else if(res.status_code == 1) {
+    } else if (result == -10000) {
         printf("Error! Division by zero.\n");
-    } else if(res.status_code == 2) {
-        printf("Error! Bad connection.\n");
+    } else if (result == -10001) {
+        printf("Error! Sever can't perform the request.\n");
+    } else {
+        printf("Result: %d\n", result);
     }
 
-    closesocket(sock);
-    WSACleanup();
     return 0;
 }
