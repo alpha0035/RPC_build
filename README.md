@@ -32,5 +32,5 @@ java RPCGui
 
 Thực hiện:
 ```
-#define timeout 30
+#define timeout 60
 ```
