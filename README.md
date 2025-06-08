@@ -15,6 +15,21 @@ gcc client.c -o bin\client.exe -lws2_32
 ```
 .\bin\client func_id a b
 ```
+
+## Sử dụng ngrok
+Vào phần mềm ngrok và chạy lệnh
+```
+ngrok tcp 8080
+```
+![Hình ảnh sau khi chạy lệnh](images/using%20ngrok.png)
+
+Thay địa chỉ và port tương ứng trong file client_ngrok.c
+```
+#define port = 11582
+```
+```
+#define host_addr = "0.tcp.ap.ngrok.io"
+```
 ## Tạo giao diện đồ họa (GUI)
 File RPCGui.java tạo một GUI bằng java và liên kết tới client.exe để thực hiện.
 Chạy lệnh biên dịch và thực thi:

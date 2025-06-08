@@ -2,8 +2,8 @@
 #include <winsock2.h>
 #include <stdlib.h>
 
-#define port 8080
-#define sever_address "127.0.0.1" // thay đổi địa chỉ IP của server nếu cần
+#define port 11582 // phụ thuộc vào ngrok, có thể thay đổi
+#define host_addr "0.tcp.ap.ngrok.io" // Địa chỉ ngrok
 
 struct RPCRequest {
     int function_id;
@@ -34,14 +34,12 @@ int rpc_call(int function_id, int a, int b) {
      pram 3: 0 - tự động chọn giao thức
     */
    sock = socket(AF_INET, SOCK_STREAM, 0);
+   struct hostent *host;
+   host = gethostbyname(host_addr);
    
-    /*
-     Cấu hình địa chỉ server
-     sever_address là địa chỉ IP của server
-     AF_INET là giao thức IPv4
-     htons() chuyển đổi số nguyên từ host byte order sang network byte order
-    */
-    server.sin_addr.s_addr = inet_addr(sever_address);
+    // Lấy địa chỉ IP từ hostname ngrok
+    // htons() chuyển đổi số nguyên từ host byte order sang network byte order
+    memcpy(&server.sin_addr, host->h_addr_list[0], host->h_length); 
     server.sin_family = AF_INET;
     server.sin_port = htons(port);
 
@@ -71,6 +69,7 @@ int main(int argc, char *argv[]) {
         printf("function_id: 1:add, 2:sub, 3:mul, 4:div\n");
         return 1;
     }
+
     
     // Convert command line arguments to integers
     int function_id = atoi(argv[1]);
