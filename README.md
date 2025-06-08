@@ -1,7 +1,7 @@
 # RPC_build
 ## Cách chạy biên dịch
 ```
-gcc sever.c -o bin\sever.exe -lws2_32
+gcc server.c -o bin\server.exe -lws2_32
 ```
 ```
 gcc client.c -o bin\client.exe -lws2_32
@@ -9,7 +9,7 @@ gcc client.c -o bin\client.exe -lws2_32
 
 ## Thực thi
 ```
-.\bin\sever
+.\bin\server
 ```
 Điền `func_id`, `a`, `b` là các số nguyên
 ```
@@ -32,5 +32,5 @@ java RPCGui
 
 Thực hiện:
 ```
-#define timeout 10
+#define timeout 30
 ```
